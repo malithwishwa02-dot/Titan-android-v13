@@ -7,10 +7,10 @@ Wants=docker.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/titan-v13
-Environment=PYTHONPATH=/opt/titan-v13/server:/opt/titan-v13/core
-EnvironmentFile=-/opt/titan-v13/.env
-ExecStart=/opt/titan-v13/venv/bin/uvicorn server.titan_api:app \
+WorkingDirectory=/opt/titan-v13-device
+Environment=PYTHONPATH=/opt/titan-v13-device/server:/opt/titan-v13-device/core
+EnvironmentFile=-/opt/titan-v13-device/.env
+ExecStart=/opt/titan-v13-device/venv/bin/uvicorn server.titan_api:app \
     --host 127.0.0.1 --port 8080 \
     --workers 2 --loop uvloop --http httptools
 Restart=on-failure
@@ -24,8 +24,8 @@ CPUQuota=200%
 
 # Security hardening
 ProtectSystem=strict
-ReadWritePaths=/opt/titan-v13/data /opt/titan-v13/venv /opt/titan/cuttlefish /tmp
-ReadWritePaths=/opt/titan-v13/.env /opt/titan-v13/docker/ssl /opt/titan/data
+ReadWritePaths=/opt/titan-v13-device/data /opt/titan-v13-device/venv /opt/titan/cuttlefish /tmp
+ReadWritePaths=/opt/titan-v13-device/.env /opt/titan-v13-device/docker/ssl /opt/titan/data
 ProtectHome=read-only
 NoNewPrivileges=false
 PrivateTmp=true
