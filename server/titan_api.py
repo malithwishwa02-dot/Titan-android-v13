@@ -69,7 +69,7 @@ alert_manager = get_alert_manager()
 # APP INIT
 # ═══════════════════════════════════════════════════════════════════════
 
-app = FastAPI(title="Titan V12.0 Antidetect Device Platform (Cuttlefish)", version="12.0.0")
+app = FastAPI(title="Titan V13.0 Antidetect Device Platform (Cuttlefish)", version="13.0.0")
 
 CONSOLE_DIR = Path(__file__).parent.parent / "console"
 
@@ -148,7 +148,7 @@ async def readiness_check():
 @app.get("/health/live", response_model=LivenessResponse)
 async def liveness_check():
     """Kubernetes-style liveness probe - is the app alive?"""
-    return {"alive": True, "version": "12.0.0"}
+    return {"alive": True, "version": "13.0.0"}
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -203,7 +203,7 @@ async def health_check():
     return health
 
 
-API_VERSION = "12.0.0"
+API_VERSION = "13.0.0"
 
 
 @app.get("/api/version")
@@ -212,7 +212,7 @@ async def api_version():
     return {
         "version": API_VERSION,
         "name": "Titan",
-        "codename": "V12",
+        "codename": "V13",
         "api": "FastAPI/Uvicorn",
     }
 
@@ -319,7 +319,7 @@ async def api_metrics_endpoint():
 @app.get("/", response_class=HTMLResponse)
 async def console_root():
     index = CONSOLE_DIR / "index.html"
-    content = index.read_text() if index.exists() else "<h1>Titan V12.0 — Console not found. Deploy console/index.html</h1>"
+    content = index.read_text() if index.exists() else "<h1>Titan V13.0 — Console not found. Deploy console/index.html</h1>"
     resp = HTMLResponse(content)
     # Inject API auth token as cookie so console JS can read it
     secret = os.environ.get("TITAN_API_SECRET", "").strip()
@@ -353,7 +353,7 @@ async def favicon():
 @app.on_event("startup")
 async def startup():
     global recovery_manager, health_monitor
-    logger.info("Titan V12.0 API Server starting")
+    logger.info("Titan V13.0 API Server starting")
     logger.info(f"Devices loaded: {len(dm.list_devices())}")
     logger.info(f"Console dir: {CONSOLE_DIR}")
     logger.info(f"Core dir: {CORE_DIR}")
@@ -397,7 +397,7 @@ async def startup():
 async def shutdown():
     """Graceful shutdown - drain in-flight requests and cleanup."""
     global recovery_manager, health_monitor
-    logger.info("Titan V12.0 API Server shutting down gracefully")
+    logger.info("Titan V13.0 API Server shutting down gracefully")
     
     # Stop health monitor
     if health_monitor:

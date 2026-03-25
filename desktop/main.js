@@ -139,7 +139,7 @@ function startServer() {
         ...process.env,
         ...projEnv,
         ...dotEnvVars,
-        PYTHONPATH: [SERVER_DIR, CORE_DIR, '/opt/titan/core', '/opt/titan-v11.3-device/core', '/opt/titan-v11.3-device/server'].filter(Boolean).join(':'),
+        PYTHONPATH: [SERVER_DIR, CORE_DIR, '/opt/titan/core', '/opt/titan-v13-device/core', '/opt/titan-v13-device/server'].filter(Boolean).join(':'),
         TITAN_DATA,
         TITAN_API_PORT: String(API_PORT),
         CVD_BIN_DIR: dotEnvVars.CVD_BIN_DIR || process.env.CVD_BIN_DIR || '/opt/titan/cuttlefish/cf/bin',
@@ -275,7 +275,7 @@ ipcMain.handle('setup:run', async (event) => {
 
     // 5. Mark setup as done
     fs.writeFileSync(SETUP_DONE, JSON.stringify({
-      version: '12.0.0',
+      version: '13.0.0',
       python: python.version,
       timestamp: new Date().toISOString(),
     }));
@@ -347,7 +347,7 @@ async function createMainWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: 'Titan V12.0 — Cuttlefish Android Console',
+    title: 'Titan V13.0 — Cuttlefish Android Console',
     backgroundColor: '#0a0e17',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
@@ -390,7 +390,7 @@ async function createMainWindow() {
     </head>
     <body>
       <div class="logo">T</div>
-      <h1>Titan V12.0</h1>
+      <h1>Titan V13.0</h1>
       <p>Starting Cuttlefish backend server…</p>
       <div class="spinner"></div>
     </body>
@@ -477,7 +477,7 @@ function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'tray.png');
   if (!fs.existsSync(iconPath)) return;
   tray = new Tray(iconPath);
-  tray.setToolTip('Titan V12.0 Cuttlefish Console');
+  tray.setToolTip('Titan V13.0 Cuttlefish Console');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Console', click: () => { if (mainWindow) mainWindow.show(); else createMainWindow(); } },
     { label: 'Device View',  click: () => createDeviceWindow() },

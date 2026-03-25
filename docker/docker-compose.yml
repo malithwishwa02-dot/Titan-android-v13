@@ -1,11 +1,11 @@
 version: "3.8"
-# Titan V12.0 — Antidetect Device Platform (Desktop-Only)
+# Titan V13.0 — Antidetect Device Platform (Desktop-Only)
 # Host networking for minimal latency. All services bind 127.0.0.1 only.
 # Cuttlefish VMs are managed via launch_cvd/stop_cvd by the API's DeviceManager.
 
 services:
   # ═══════════════════════════════════════════════════════════════════
-  # TITAN API SERVER — FastAPI + 16 router modules + middleware
+  # TITAN API SERVER — FastAPI + 18 router modules + middleware
   # ═══════════════════════════════════════════════════════════════════
   titan-api:
     build:
@@ -20,7 +20,7 @@ services:
       - ../console:/opt/titan/console
       - ../core:/opt/titan/core
       - ../server:/opt/titan/server
-      - ${TITAN_RELEASE:-/root/titan-v11-release/core}:/opt/titan/v11-core:ro
+      - ${TITAN_RELEASE:-/opt/titan-v13-device/core}:/opt/titan/v11-core:ro
     env_file:
       - ../.env
     environment:

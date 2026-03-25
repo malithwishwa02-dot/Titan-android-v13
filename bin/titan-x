@@ -65,7 +65,7 @@ EOF
 }
 
 version_info() {
-    echo "Titan-X v12.0.0"
+    echo "Titan-X v13.0.0"
     echo "  Install:    ${TITAN_DIR}"
     echo "  Data:       ${DATA_DIR}"
     echo "  Python:     $("${PYTHON}" --version 2>&1 || echo 'not found')"
