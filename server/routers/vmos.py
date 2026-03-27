@@ -54,8 +54,25 @@ def get_modifier() -> VMOSDeviceModifier:
 
 
 def init(api_key: str | None = None, api_secret: str | None = None):
-    """Initialize the VMOS bridge with credentials."""
+    """Initialize the VMOS bridge with credentials.
+    
+    Priority: explicit args > settings file > environment variables.
+    """
     global _bridge, _modifier
+    
+    # Try to load from settings file if not explicitly provided
+    if not api_key or not api_secret:
+        try:
+            import json
+            from pathlib import Path
+            settings_path = Path(os.environ.get("TITAN_DATA", "/opt/titan/data")) / "config" / "settings.json"
+            if settings_path.exists():
+                settings = json.loads(settings_path.read_text())
+                api_key = api_key or settings.get("vmos_api_key")
+                api_secret = api_secret or settings.get("vmos_api_secret")
+        except Exception:
+            pass
+    
     if api_key and api_secret:
         _bridge = VMOSCloudBridge(api_key=api_key, api_secret=api_secret)
         _modifier = VMOSDeviceModifier(_bridge)
