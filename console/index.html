@@ -160,8 +160,8 @@
 <!-- GENESIS STUDIO -->
 <div x-show="section==='genesis'" x-cloak>
   <div class="flex gap-1 border-b border-gray-800 mb-4 flex-wrap">
-    <template x-for="tab in ['Full Genesis','Pipeline','Inspector','Device Aging','Vault','History','Hardening','Cookies','Target','Results']">
-      <button class="tab-btn px-3 py-2 text-xs text-gray-400 hover:text-white" :class="genesisTab===tab?'active':''" @click="genesisTab=tab;if(tab==='Inspector'&&inspectProfile)loadInspectData(inspectProfile)" x-text="tab==='Full Genesis'?'🧬 Full Genesis':tab==='Pipeline'?'⚡ Pipeline':tab==='Inspector'?'🔍 Inspector':tab"></button>
+    <template x-for="tab in ['Full Genesis','Pipeline','VMOS Cloud','Inspector','Device Aging','Vault','History','Hardening','Cookies','Target','Results']">
+      <button class="tab-btn px-3 py-2 text-xs text-gray-400 hover:text-white" :class="genesisTab===tab?'active':''" @click="genesisTab=tab;if(tab==='Inspector'&&inspectProfile)loadInspectData(inspectProfile);if(tab==='VMOS Cloud')loadVmosInstances()" x-text="tab==='Full Genesis'?'🧬 Full Genesis':tab==='Pipeline'?'⚡ Pipeline':tab==='Inspector'?'🔍 Inspector':tab==='VMOS Cloud'?'☁️ VMOS Cloud':tab"></button>
     </template>
   </div>
 
@@ -942,6 +942,197 @@
       </div><!-- /right column -->
     </div><!-- /grid -->
   </div><!-- /Pipeline tab -->
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- VMOS CLOUD TAB — VMOS Pro Cloud Device Management & Pipeline   -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div x-show="genesisTab==='VMOS Cloud'" x-cloak>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+      <!-- ── LEFT: VMOS Device List & Selection ────────────────────── -->
+      <div class="space-y-3">
+        <div class="grp border-purple-700 bg-purple-900/10 glow">
+          <h3 class="grp-title text-purple-400">☁️ VMOS Cloud Instances</h3>
+          <div class="flex items-center gap-2 mb-3">
+            <button @click="loadVmosInstances()" class="btn-purple text-white px-3 py-1.5 rounded-lg text-xs">↻ Refresh</button>
+            <span class="text-xs text-gray-500" x-text="(vmosInstances||[]).length+' instances'"></span>
+            <span x-show="vmosLoading" class="text-xs text-yellow-400 pulse-dot">Loading...</span>
+          </div>
+          <div x-show="vmosError" class="text-sm text-red-400 bg-red-900/20 rounded-lg p-2 mb-3" x-text="vmosError"></div>
+          <div x-show="!(vmosInstances||[]).length && !vmosLoading && !vmosError" class="text-sm text-gray-500 py-4">
+            No VMOS Cloud instances found. Configure API credentials in Settings → VMOS Cloud.
+          </div>
+          <div class="space-y-2 max-h-80 overflow-y-auto scrollbar-thin">
+            <template x-for="inst in vmosInstances||[]" :key="inst.pad_code">
+              <div class="device-card bg-[#1e293b] rounded-lg p-3 border border-transparent"
+                   :class="vmosPipeline.pad_code===inst.pad_code?'border-purple-500 bg-purple-900/20':''"
+                   @click="selectVmosInstance(inst)">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full" :class="inst.status==='running'||inst.status==='online'?'bg-green-500':inst.status==='stopped'?'bg-gray-500':'bg-yellow-500'"></span>
+                      <span class="text-sm font-medium text-white" x-text="inst.device_name||inst.pad_code"></span>
+                    </div>
+                    <div class="text-[10px] text-gray-500 mt-1">
+                      <span x-text="'Code: '+inst.pad_code"></span> ·
+                      <span x-text="'Android '+inst.android_version"></span> ·
+                      <span x-text="inst.resolution||'—'"></span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[10px] px-2 py-0.5 rounded" 
+                          :class="inst.status==='running'||inst.status==='online'?'bg-green-900/50 text-green-400':'bg-gray-800 text-gray-400'"
+                          x-text="inst.status||'unknown'"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- VMOS Instance Actions -->
+        <div class="grp" x-show="vmosPipeline.pad_code">
+          <h3 class="grp-title text-cyan-400">🎮 Instance Control</h3>
+          <div class="flex gap-2 flex-wrap mb-3">
+            <button @click="vmosAction('restart')" class="btn-secondary text-white px-3 py-1.5 rounded-lg text-xs">↻ Restart</button>
+            <button @click="vmosAction('screenshot')" class="btn-secondary text-white px-3 py-1.5 rounded-lg text-xs">📷 Screenshot</button>
+            <button @click="vmosAction('shell')" class="btn-secondary text-white px-3 py-1.5 rounded-lg text-xs">🖥 Shell</button>
+            <button @click="vmosAction('properties')" class="btn-secondary text-white px-3 py-1.5 rounded-lg text-xs">📋 Properties</button>
+          </div>
+          <div class="mb-3" x-show="vmosShellMode">
+            <label class="lbl">Shell Command</label>
+            <div class="flex gap-2">
+              <input type="text" class="inp flex-1" x-model="vmosShellCmd" placeholder="getprop ro.product.model" @keyup.enter="runVmosShell()">
+              <button @click="runVmosShell()" class="btn-primary text-white px-3 py-1.5 rounded-lg text-xs">Run</button>
+            </div>
+          </div>
+          <div x-show="vmosActionLog" class="log-area h-32 mt-2" x-text="vmosActionLog"></div>
+          <div x-show="vmosScreenshot" class="mt-3">
+            <img :src="vmosScreenshot" alt="Screenshot" class="rounded-lg max-h-48 mx-auto border border-gray-700">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RIGHT: VMOS Pipeline Configuration ────────────────────── -->
+      <div class="space-y-3">
+        <div class="grp border-green-700 bg-green-900/10" x-show="vmosPipeline.pad_code">
+          <h3 class="grp-title text-green-400">⚡ VMOS Genesis Pipeline</h3>
+          <p class="text-[10px] text-gray-500 mb-3">Run full identity pipeline on VMOS Cloud device: <span class="text-purple-400 font-mono" x-text="vmosPipeline.pad_code"></span></p>
+
+          <!-- Identity Fields -->
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div><label class="lbl">Full Name</label><input type="text" class="inp" x-model="vmosPipeline.name" placeholder="John Smith"></div>
+            <div><label class="lbl">Email</label><input type="text" class="inp" x-model="vmosPipeline.email" placeholder="john@example.com"></div>
+            <div><label class="lbl">Phone</label><input type="text" class="inp" x-model="vmosPipeline.phone" placeholder="+1234567890"></div>
+            <div><label class="lbl">DOB (MM/DD/YYYY)</label><input type="text" class="inp" x-model="vmosPipeline.dob" placeholder="01/15/1990"></div>
+            <div><label class="lbl">SSN (last 4)</label><input type="text" class="inp" x-model="vmosPipeline.ssn" placeholder="1234"></div>
+            <div><label class="lbl">Gender</label>
+              <select x-model="vmosPipeline.gender" class="inp">
+                <option value="M">Male</option><option value="F">Female</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="col-span-2"><label class="lbl">Street</label><input type="text" class="inp" x-model="vmosPipeline.street" placeholder="123 Main St"></div>
+            <div><label class="lbl">City</label><input type="text" class="inp" x-model="vmosPipeline.city" placeholder="Los Angeles"></div>
+            <div><label class="lbl">State</label><input type="text" class="inp" x-model="vmosPipeline.state" placeholder="CA"></div>
+            <div><label class="lbl">ZIP</label><input type="text" class="inp" x-model="vmosPipeline.zip" placeholder="90001"></div>
+            <div><label class="lbl">Country</label>
+              <select x-model="vmosPipeline.country" class="inp">
+                <option value="US">United States</option><option value="GB">United Kingdom</option>
+                <option value="CA">Canada</option><option value="DE">Germany</option>
+                <option value="AU">Australia</option><option value="FR">France</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Device Config -->
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div><label class="lbl">Device Model</label>
+              <select x-model="vmosPipeline.device_model" class="inp">
+                <template x-for="p in presets||[]" :key="p.key"><option :value="p.key" x-text="p.name"></option></template>
+              </select>
+            </div>
+            <div><label class="lbl">Carrier</label>
+              <select x-model="vmosPipeline.carrier" class="inp">
+                <template x-for="(c,key) in carriers||{}" :key="key"><option :value="key" x-text="c.name"></option></template>
+              </select>
+            </div>
+            <div><label class="lbl">Location</label>
+              <select x-model="vmosPipeline.location" class="inp">
+                <template x-for="(loc,key) in locations||{}" :key="key"><option :value="key" x-text="key.toUpperCase()"></option></template>
+              </select>
+            </div>
+          </div>
+
+          <!-- Card Data (Optional) -->
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div><label class="lbl">Card Number</label><input type="text" class="inp" x-model="vmosPipeline.cc_number" placeholder="4111111111111111"></div>
+            <div><label class="lbl">Exp (MM/YYYY)</label><input type="text" class="inp" x-model="vmosPipeline.cc_exp" placeholder="12/2027"></div>
+            <div><label class="lbl">CVV</label><input type="text" class="inp" x-model="vmosPipeline.cc_cvv" placeholder="123"></div>
+          </div>
+
+          <!-- Google Account (Optional) -->
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div><label class="lbl">Google Email</label><input type="text" class="inp" x-model="vmosPipeline.google_email" placeholder="user@gmail.com"></div>
+            <div><label class="lbl">Google Password</label><input type="password" class="inp" x-model="vmosPipeline.google_password" placeholder="••••••••"></div>
+          </div>
+
+          <!-- Options -->
+          <div class="flex items-center gap-4 mb-4 text-xs text-gray-400">
+            <label class="flex items-center gap-2"><input type="checkbox" x-model="vmosPipeline.skip_wipe" class="rounded"> Skip Wipe</label>
+            <label class="flex items-center gap-2"><input type="checkbox" x-model="vmosPipeline.skip_patch" class="rounded"> Skip Patch</label>
+            <div><label class="lbl inline">Age Days</label><input type="number" class="inp inp-sm w-16 ml-1" x-model="vmosPipeline.age_days" min="1" max="365"></div>
+          </div>
+
+          <button @click="startVmosPipeline()" :disabled="vmosPipelineRunning" class="btn-green text-white px-5 py-2.5 rounded-lg text-sm font-semibold w-full">
+            <span x-show="!vmosPipelineRunning">▶ START VMOS PIPELINE</span>
+            <span x-show="vmosPipelineRunning">⏳ Running...</span>
+          </button>
+        </div>
+
+        <!-- No Device Selected -->
+        <div x-show="!vmosPipeline.pad_code" class="grp border-dashed !border-purple-800 text-center py-8">
+          <div class="text-xl text-purple-400 mb-2">☁️ Select a VMOS Instance</div>
+          <div class="text-sm text-gray-500">Click on a VMOS Cloud instance to configure and run Genesis pipeline.</div>
+        </div>
+
+        <!-- Pipeline Progress -->
+        <div class="grp" x-show="vmosPipelineJob">
+          <h3 class="grp-title text-yellow-400">📊 Pipeline Progress</h3>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-mono text-gray-400" x-text="'Job: '+(vmosPipelineJob?.job_id||'—')"></span>
+            <span class="text-xs px-2 py-0.5 rounded"
+                  :class="vmosPipelineJob?.status==='completed'?'bg-green-900/50 text-green-400':vmosPipelineJob?.status==='running'?'bg-yellow-900/50 text-yellow-400':'bg-red-900/50 text-red-400'"
+                  x-text="vmosPipelineJob?.status||'—'"></span>
+          </div>
+          <div class="space-y-1">
+            <template x-for="phase in vmosPipelineJob?.phases||[]" :key="phase.n">
+              <div class="flex items-center gap-2 text-xs">
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
+                      :class="phase.status==='done'?'bg-green-900/50 text-green-400':phase.status==='running'?'bg-yellow-900/50 text-yellow-400':phase.status==='failed'?'bg-red-900/50 text-red-400':'bg-gray-800 text-gray-500'"
+                      x-text="phase.status==='done'?'✓':phase.status==='running'?'→':phase.status==='failed'?'✗':phase.n"></span>
+                <span class="flex-1" :class="phase.status==='done'?'text-green-400':phase.status==='running'?'text-yellow-400':phase.status==='failed'?'text-red-400':'text-gray-500'" x-text="phase.name"></span>
+                <span class="text-gray-600 text-[10px]" x-text="phase.notes||''"></span>
+              </div>
+            </template>
+          </div>
+          <div x-show="vmosPipelineJob?.trust_score" class="mt-3 flex items-center gap-2">
+            <span class="text-xs text-gray-400">Trust Score:</span>
+            <span class="font-bold" :class="(vmosPipelineJob?.trust_score||0)>=80?'text-green-400':(vmosPipelineJob?.trust_score||0)>=60?'text-yellow-400':'text-red-400'" x-text="(vmosPipelineJob?.trust_score||0)+'%'"></span>
+          </div>
+        </div>
+
+        <!-- Pipeline Log -->
+        <div class="grp" x-show="vmosPipelineLog">
+          <h3 class="grp-title text-gray-400">📜 Pipeline Log</h3>
+          <div class="log-area h-40" x-text="vmosPipelineLog"></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /VMOS Cloud tab -->
 
   <!-- ══════════════════════════════════════════════════════════════ -->
   <!-- INSPECTOR TAB — Visual profile + wallet + transaction viewer   -->
@@ -2736,7 +2927,7 @@
 <!-- SETTINGS -->
 <div x-show="section==='settings'" x-cloak>
   <div class="flex gap-1 border-b border-gray-800 mb-4 flex-wrap">
-    <template x-for="tab in ['VPN','AI','Services','Browser','API Keys','System','Hyperswitch','Proxy','Android']">
+    <template x-for="tab in ['VPN','AI','Services','Browser','API Keys','VMOS Cloud','System','Hyperswitch','Proxy','Android']">
       <button class="tab-btn px-3 py-2 text-xs text-gray-400 hover:text-white" :class="settingsTab===tab?'active':''" @click="settingsTab=tab" x-text="tab"></button>
     </template>
   </div>
@@ -2754,6 +2945,34 @@
 
   <!-- API KEYS -->
   <div x-show="settingsTab==='API Keys'"><div class="grp glow"><h3 class="grp-title text-red-400">API Keys &amp; Secrets</h3><p class="text-[11px] text-gray-500 mb-3">Keys are stored locally and never transmitted externally.</p><div class="space-y-3"><div><label class="lbl">Titan API Secret</label><input type="password" x-model="settingsData.titan_api_secret" placeholder="your_secret_key" class="inp font-mono"></div><div><label class="lbl">Vast.ai Host</label><input type="text" x-model="settingsData.vastai_host" placeholder="ssh.vast.ai" class="inp font-mono"></div><div><label class="lbl">Vast.ai Port</label><input type="text" x-model="settingsData.vastai_port" placeholder="22" class="inp font-mono"></div><button @click="saveSettings()" class="btn-primary text-white px-6 py-2 rounded-lg text-sm font-bold">SAVE</button><span class="text-xs text-green-400 ml-3" x-text="settingsSaved?'Saved!':''"></span></div></div></div>
+
+  <!-- VMOS CLOUD -->
+  <div x-show="settingsTab==='VMOS Cloud'">
+    <div class="grp glow">
+      <h3 class="grp-title text-purple-400">☁️ VMOS Cloud API Configuration</h3>
+      <p class="text-[11px] text-gray-500 mb-3">Configure VMOS Cloud API credentials for cloud phone management. Get your keys from <a href="https://cloud.vmoscloud.com" target="_blank" class="text-purple-400 hover:underline">cloud.vmoscloud.com</a></p>
+      <div class="space-y-3">
+        <div><label class="lbl">API Access Key (AK)</label><input type="text" x-model="settingsData.vmos_api_key" placeholder="BPWNWxfX..." class="inp font-mono"></div>
+        <div><label class="lbl">API Secret Key (SK)</label><input type="password" x-model="settingsData.vmos_api_secret" placeholder="Q2SgcSwE..." class="inp font-mono"></div>
+        <div><label class="lbl">API Host</label><input type="text" x-model="settingsData.vmos_api_host" placeholder="api.vmoscloud.com" class="inp font-mono"></div>
+        <div class="flex gap-3">
+          <button @click="saveSettings()" class="btn-primary text-white px-6 py-2 rounded-lg text-sm font-bold">SAVE</button>
+          <button @click="testVmosConnection()" class="btn-secondary text-white px-4 py-2 rounded-lg text-sm">Test Connection</button>
+          <span class="text-xs text-green-400 ml-3 self-center" x-text="settingsSaved?'Saved!':''"></span>
+        </div>
+        <div x-show="vmosConnectionTest" class="text-xs mt-2" :class="vmosConnectionTest.ok?'text-green-400':'text-red-400'" x-text="vmosConnectionTest.message||''"></div>
+      </div>
+    </div>
+    <div class="grp mt-4">
+      <h3 class="grp-title text-cyan-400">📋 Environment Variables</h3>
+      <p class="text-[11px] text-gray-500 mb-2">Alternatively, set these environment variables:</p>
+      <div class="log-area h-24 text-[10px]">
+VMOS_API_KEY=your_access_key
+VMOS_API_SECRET=your_secret_key
+VMOS_API_HOST=api.vmoscloud.com
+      </div>
+    </div>
+  </div>
 
   <!-- SYSTEM -->
   <div x-show="settingsTab==='System'"><div class="grp glow"><h3 class="grp-title text-cyan-400">System Paths</h3><div class="space-y-3"><div><label class="lbl">Titan Data Path</label><input type="text" x-model="settingsData.titan_data" placeholder="/opt/titan/data" class="inp font-mono"></div><div class="grid grid-cols-3 gap-3"><div class="grp text-center"><div class="text-xs text-gray-500">API Port</div><div class="text-lg text-cyan-400">8080</div></div><div class="grp text-center"><div class="text-xs text-gray-500">Platform</div><div class="text-lg text-cyan-400">Linux</div></div><div class="grp text-center"><div class="text-xs text-gray-500">Version</div><div class="text-lg text-cyan-400">v11.3</div></div></div><button @click="saveSettings()" class="btn-primary text-white px-6 py-2 rounded-lg text-sm font-bold">SAVE</button><span class="text-xs text-green-400 ml-3" x-text="settingsSaved?'Saved!':''"></span></div></div></div>
@@ -2916,6 +3135,29 @@ function titanConsole() {
     pipelineManualOpen: false,
     walletStatus: null,
     _pipelinePollTimer: null,
+    
+    // ── VMOS CLOUD STATE ───────────────────────────────────────────────
+    vmosInstances: [],
+    vmosLoading: false,
+    vmosError: '',
+    vmosShellMode: false,
+    vmosShellCmd: '',
+    vmosActionLog: '',
+    vmosScreenshot: '',
+    vmosConnectionTest: null,
+    vmosPipeline: {
+      pad_code: '', name: '', email: '', phone: '', dob: '', ssn: '', gender: 'M',
+      street: '', city: '', state: '', zip: '', country: 'US',
+      device_model: 'samsung_s24', carrier: 'tmobile_us', location: 'la', age_days: 120,
+      cc_number: '', cc_exp: '', cc_cvv: '', cc_holder: '',
+      google_email: '', google_password: '',
+      skip_wipe: false, skip_patch: false,
+    },
+    vmosPipelineRunning: false,
+    vmosPipelineJob: null,
+    vmosPipelineLog: '',
+    _vmosPipelinePollTimer: null,
+    
     inspectProfile: '',
     inspectTab: 'Identity',
     inspectData: null,
@@ -2986,7 +3228,7 @@ function titanConsole() {
     navItems: [
       {key:'dashboard',label:'Dashboard',icon:'\ud83d\udcca',desc:'Device status overview',badge:''},
       {key:'devices',label:'Device',icon:'\ud83d\udcf1',desc:'Permanent device + reset',badge:''},
-      {key:'genesis',label:'Genesis Studio',icon:'\ud83d\udc8e',desc:'Profile forge + inject',badge:'11'},
+      {key:'genesis',label:'Genesis Studio',icon:'\ud83d\udc8e',desc:'Profile forge + VMOS Cloud',badge:'12'},
       {key:'intel',label:'Intelligence',icon:'\ud83e\udde0',desc:'AI copilot + recon',badge:'8'},
       {key:'network',label:'Network',icon:'\ud83d\udd12',desc:'VPN + proxy + forensic',badge:'5'},
       {key:'cerberus',label:'Cerberus',icon:'\ud83d\udcb3',desc:'Card validation + BIN',badge:'8'},
@@ -3995,6 +4237,139 @@ function titanConsole() {
     },
     async loadWorkflowJobs() {
       try { const r=await this.api('/training/workflow/jobs'); this.workflowJobs=r.jobs||[]; } catch(e) { this.workflowJobs=[]; }
+    },
+
+    // === VMOS CLOUD: Instance Management & Pipeline ===
+    async loadVmosInstances() {
+      this.vmosLoading = true; this.vmosError = '';
+      try {
+        const r = await this.api('/api/vmos/instances');
+        this.vmosInstances = r || [];
+        this.vmosLoading = false;
+      } catch(e) {
+        this.vmosError = 'Failed to load VMOS instances: ' + e.message;
+        this.vmosInstances = [];
+        this.vmosLoading = false;
+      }
+    },
+    selectVmosInstance(inst) {
+      this.vmosPipeline.pad_code = inst.pad_code;
+      this.vmosActionLog = '';
+      this.vmosScreenshot = '';
+      this.vmosShellMode = false;
+    },
+    async vmosAction(action) {
+      if (!this.vmosPipeline.pad_code) return;
+      const pc = this.vmosPipeline.pad_code;
+      this.vmosActionLog = 'Running ' + action + ' on ' + pc + '...\n';
+      try {
+        if (action === 'restart') {
+          const r = await this.api('/api/vmos/instances/' + pc + '/restart', { method: 'POST', body: '{}' });
+          this.vmosActionLog += 'Restart: ' + (r.ok ? 'Success' : r.message || 'Failed') + '\n';
+        } else if (action === 'screenshot') {
+          const r = await this.api('/api/vmos/instances/' + pc + '/screenshot', { method: 'POST', body: '{}' });
+          if (r.data && r.data.url) { this.vmosScreenshot = r.data.url; this.vmosActionLog += 'Screenshot captured\n'; }
+          else { this.vmosActionLog += 'Screenshot: ' + JSON.stringify(r) + '\n'; }
+        } else if (action === 'shell') {
+          this.vmosShellMode = true;
+          this.vmosActionLog += 'Shell mode enabled. Enter command and press Run.\n';
+        } else if (action === 'properties') {
+          const r = await this.api('/api/vmos/instances/' + pc);
+          this.vmosActionLog += JSON.stringify(r, null, 2);
+        }
+      } catch(e) { this.vmosActionLog += 'Error: ' + e.message + '\n'; }
+    },
+    async runVmosShell() {
+      if (!this.vmosPipeline.pad_code || !this.vmosShellCmd) return;
+      const pc = this.vmosPipeline.pad_code;
+      this.vmosActionLog += '$ ' + this.vmosShellCmd + '\n';
+      try {
+        const r = await this.api('/api/vmos/instances/' + pc + '/shell', {
+          method: 'POST',
+          body: JSON.stringify({ command: this.vmosShellCmd, timeout: 60 })
+        });
+        this.vmosActionLog += (r.result || r.message || JSON.stringify(r)) + '\n';
+      } catch(e) { this.vmosActionLog += 'Error: ' + e.message + '\n'; }
+    },
+    async startVmosPipeline() {
+      if (!this.vmosPipeline.pad_code) { alert('Select a VMOS instance first'); return; }
+      this.vmosPipelineRunning = true;
+      this.vmosPipelineLog = 'Starting VMOS Genesis pipeline on ' + this.vmosPipeline.pad_code + '...\n';
+      this.vmosPipelineJob = null;
+      try {
+        const body = {
+          pad_code: this.vmosPipeline.pad_code,
+          name: this.vmosPipeline.name,
+          email: this.vmosPipeline.email,
+          phone: this.vmosPipeline.phone,
+          dob: this.vmosPipeline.dob,
+          ssn: this.vmosPipeline.ssn,
+          gender: this.vmosPipeline.gender,
+          street: this.vmosPipeline.street,
+          city: this.vmosPipeline.city,
+          state: this.vmosPipeline.state,
+          zip: this.vmosPipeline.zip,
+          country: this.vmosPipeline.country,
+          device_model: this.vmosPipeline.device_model,
+          carrier: this.vmosPipeline.carrier,
+          location: this.vmosPipeline.location,
+          age_days: parseInt(this.vmosPipeline.age_days) || 120,
+          cc_number: this.vmosPipeline.cc_number,
+          cc_exp: this.vmosPipeline.cc_exp,
+          cc_cvv: this.vmosPipeline.cc_cvv,
+          google_email: this.vmosPipeline.google_email,
+          google_password: this.vmosPipeline.google_password,
+          skip_wipe: this.vmosPipeline.skip_wipe,
+          skip_patch: this.vmosPipeline.skip_patch,
+        };
+        const r = await this.api('/api/vmos-genesis/pipeline', { method: 'POST', body: JSON.stringify(body) });
+        if (r.job_id) {
+          this.vmosPipelineLog += 'Pipeline started. Job ID: ' + r.job_id + '\n';
+          this.pollVmosPipeline(r.job_id);
+        } else {
+          this.vmosPipelineLog += 'Error: ' + JSON.stringify(r) + '\n';
+          this.vmosPipelineRunning = false;
+        }
+      } catch(e) {
+        this.vmosPipelineLog += 'Error starting pipeline: ' + e.message + '\n';
+        this.vmosPipelineRunning = false;
+      }
+    },
+    async pollVmosPipeline(jobId) {
+      if (this._vmosPipelinePollTimer) clearInterval(this._vmosPipelinePollTimer);
+      const poll = async () => {
+        try {
+          const st = await this.api('/api/vmos-genesis/pipeline-status/' + jobId);
+          this.vmosPipelineJob = st;
+          if (st.log) {
+            const newLogs = st.log.slice(-(st.log.length - (this.vmosPipelineLog.split('\n').length - 2)));
+            newLogs.forEach(l => { if (l && !this.vmosPipelineLog.includes(l)) this.vmosPipelineLog += l + '\n'; });
+          }
+          if (st.status === 'completed' || st.status === 'failed') {
+            this.vmosPipelineRunning = false;
+            clearInterval(this._vmosPipelinePollTimer);
+            this.vmosPipelineLog += '\n' + (st.status === 'completed' ? '✅ Pipeline completed!' : '❌ Pipeline failed');
+            if (st.trust_score) this.vmosPipelineLog += ' Trust Score: ' + st.trust_score + '%';
+          }
+        } catch(e) {
+          this.vmosPipelineLog += 'Poll error: ' + e.message + '\n';
+        }
+      };
+      await poll();
+      this._vmosPipelinePollTimer = setInterval(poll, 3000);
+    },
+    async testVmosConnection() {
+      this.vmosConnectionTest = { ok: false, message: 'Testing connection...' };
+      try {
+        const r = await this.api('/api/vmos/status');
+        if (r.configured) {
+          this.vmosConnectionTest = { ok: true, message: '✓ Connected to VMOS Cloud API (' + r.host + ')' };
+        } else {
+          this.vmosConnectionTest = { ok: false, message: '✗ API not configured: ' + (r.message || 'Missing credentials') };
+        }
+      } catch(e) {
+        this.vmosConnectionTest = { ok: false, message: '✗ Connection failed: ' + e.message };
+      }
     },
 
     // === CERBERUS: BIN Testing ===

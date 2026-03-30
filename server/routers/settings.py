@@ -33,6 +33,8 @@ ALLOWED_SETTINGS_KEYS = {
     "gpu_url", "titan_api_secret", "titan_data", "ollama_url",
     "vastai_host", "vastai_port", "theme", "auto_patch", "max_devices",
     "agent_model", "vision_model", "specialist_model",
+    # VMOS Cloud settings
+    "vmos_api_key", "vmos_api_secret", "vmos_api_host",
 }
 
 
